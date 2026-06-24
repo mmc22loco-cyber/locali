@@ -1,0 +1,76 @@
+=== git status === 
+warning: could not open directory 'AppData/Local/Application Data/': Permission denied
+warning: could not open directory 'Application Data/': Permission denied
+warning: could not open directory 'Cookies/': Permission denied
+warning: could not open directory 'Documents/My Music/': Permission denied
+warning: could not open directory 'Documents/My Pictures/': Permission denied
+warning: could not open directory 'Documents/My Videos/': Permission denied
+warning: could not open directory 'Local Settings/': Permission denied
+warning: could not open directory 'My Documents/': Permission denied
+warning: could not open directory 'NetHood/': Permission denied
+warning: could not open directory 'PrintHood/': Permission denied
+warning: could not open directory 'Recent/': Permission denied
+warning: could not open directory 'SendTo/': Permission denied
+warning: could not open directory 'Start Menu/': Permission denied
+warning: could not open directory 'Templates/': Permission denied
+On branch main
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	../../.VirtualBox/
+	../../.android/
+	../../.antigravity/
+	../../.claude.json
+	../../.claude.json.backup
+	../../.claude/
+	../../.copilot/
+	../../.gemini/
+	../../.node_repl_history
+	../../.ssh/
+	../../.vscode/
+	../../App
+	../../AppData/
+	../../Claude-Cowork/
+	../../Contacts/
+	../../Desktop/
+	../Alibot/
+	@echo offgit_log.batgit_log.bat
+	Locali/
+	../Backup/
+	../Dash/
+	../Default.rdp
+	../New folder (2)/
+	../Sophos/
+	../desktop.ini
+	"../\327\236\327\250\327\230\327\231\327\237 \327\247\327\250\327\223\327\225\327\241\327\225 2025.docx"
+	"../\327\242\327\225\327\252\327\247 \327\251\327\234 Claude-by-Anthropic-for-Excel.xlsx"
+	"../\327\247\327\225\327\221\327\245 \327\247\327\250\327\231\327\220\327\225\327\252 \327\236\327\252\327\225\327\247\327\237.xlsx"
+	"../\327\247\327\225\327\250\327\225\327\252 \327\227\327\231\327\231\327\235 \327\236\327\250\327\230\327\231\327\237 \327\247\327\250\327\223\327\225\327\241\327\225 2025.doc"
+	../../Downloads/
+	../../Favorites/
+	../../Links/
+	../../Music/
+	../../NTUSER.DAT
+	../../NTUSER.DAT{f9bb3209-453c-11f1-9fb1-18c04dfa68bd}.TM.blf
+	../../NTUSER.DAT{f9bb3209-453c-11f1-9fb1-18c04dfa68bd}.TMContainer00000000000000000001.regtrans-ms
+	../../NTUSER.DAT{f9bb3209-453c-11f1-9fb1-18c04dfa68bd}.TMContainer00000000000000000002.regtrans-ms
+	../../OneDrive/
+	../../Pictures/
+	../../Saved Games/
+	../../Searches/
+	../../Videos/
+	../../VirtualBox VMs/
+	../../ntuser.dat.LOG1
+	../../ntuser.dat.LOG2
+	../../ntuser.ini
+	../../python
+	../../scp
+	../../whatsapp-bot/
+
+nothing added to commit but untracked files present (use "git add" to track)
+=== git remote === 
+origin	https://github.com/mmc22loco-cyber/locali.git (fetch)
+origin	https://github.com/mmc22loco-cyber/locali.git (push)
+=== git log === 
+dca5b620 v0.3.0 - Locali comparador de precios Israel
+44e806dd Initial commit - Locali v0.3.0
+=== git add === 
