@@ -1,0 +1,669 @@
+/* Locali — Panel Styles */
+
+#locali-panel {
+  position: fixed;
+  top: 80px;
+  right: 16px;
+  width: 310px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  background: #0f172a;
+  color: #f1f5f9;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  z-index: 2147483647;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  direction: rtl;
+  border: 1px solid #1e293b;
+  scrollbar-width: thin;
+  scrollbar-color: #334155 transparent;
+}
+#locali-panel.locali-hidden { display: none; }
+
+#locali-close {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+#locali-close:hover { color: #f1f5f9; }
+
+/* ── Header ── */
+.locali-header {
+  padding: 12px 32px 10px 12px;
+  background: linear-gradient(135deg, #0038b8, #1d5fe8);
+  border-radius: 11px 11px 0 0;
+}
+.locali-logo { font-weight: 700; font-size: 14px; }
+
+/* ── Product ── */
+.locali-product { padding: 10px 12px 4px; }
+.locali-product-name {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+/* ── Section ── */
+.locali-section {
+  padding: 8px 12px;
+  border-top: 1px solid #1e293b;
+}
+.locali-section-title {
+  font-weight: 700;
+  font-size: 12px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+.locali-section-sub {
+  font-size: 10px;
+  color: #475569;
+  margin-bottom: 8px;
+}
+
+/* ── AliExpress price ── */
+.locali-price-row { margin-bottom: 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.locali-price-ali { font-size: 15px; font-weight: 700; color: #0038b8; }
+.locali-shipping-fee { font-size: 11px; color: #f59e0b; background: #fef3c7; padding: 2px 6px; border-radius: 4px; }
+.locali-shipping-free { font-size: 11px; color: #10b981; background: #d1fae5; padding: 2px 6px; border-radius: 4px; }
+.locali-shipping { font-size: 11px; color: #64748b; margin-top: 4px; }
+.locali-total { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+
+/* ── VAT badge ── */
+.locali-vat {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+.locali-vat-yes { background: #7f1d1d22; color: #fca5a5; border: 1px solid #7f1d1d44; }
+.locali-vat-no  { background: #14532d22; color: #86efac; border: 1px solid #14532d44; }
+
+/* ── Store card ── */
+.locali-store {
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  border: 1px solid #334155;
+}
+.locali-store-physical { border-color: #1e3a5f; }
+
+.locali-store-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.locali-store-name { font-weight: 600; font-size: 12px; flex: 1; }
+.locali-store-tier { font-size: 10px; color: #64748b; }
+.locali-store-price { font-weight: 700; color: #22c55e; font-size: 13px; }
+.locali-store-sub { font-size: 11px; color: #64748b; margin-bottom: 6px; }
+
+/* ── Store actions row ── */
+.locali-store-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.locali-link {
+  font-size: 11px;
+  color: #60a5fa;
+  text-decoration: none;
+  padding: 3px 8px;
+  background: #1d4ed822;
+  border: 1px solid #1d4ed844;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+.locali-link:hover { background: #1d4ed844; }
+.locali-link-wa { color: #4ade80; background: #14532d22; border-color: #14532d44; }
+.locali-link-wa:hover { background: #14532d44; }
+
+/* ── Ask button ── */
+.locali-ask-btn {
+  font-size: 11px;
+  color: #f1f5f9;
+  background: #0038b820;
+  border: 1px solid #0038b840;
+  border-radius: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-family: inherit;
+}
+.locali-ask-btn:hover { background: #0038b840; }
+
+.locali-open   { font-size: 10px; color: #4ade80; background: #14532d22; padding: 2px 6px; border-radius: 4px; }
+.locali-closed { font-size: 10px; color: #f87171; background: #7f1d1d22; padding: 2px 6px; border-radius: 4px; }
+
+/* ── Summary box ── */
+.locali-summary {
+  margin: 8px 12px 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #94a3b8;
+}
+.locali-summary-save  { border-color: #0038b844; color: #fca5a5; background: #7f1d1d11; }
+.locali-summary-local { border-color: #22c55e44; color: #86efac; background: #14532d11; }
+
+/* ── Loading ── */
+.locali-loading {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #64748b;
+  font-size: 12px;
+}
+.locali-spinner {
+  width: 28px; height: 28px;
+  border: 3px solid #334155;
+  border-top-color: #0038b8;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Error ── */
+.locali-error { padding: 16px 12px; color: #fca5a5; font-size: 12px; }
+.locali-hint  { color: #64748b; font-size: 11px; margin-top: 6px; line-height: 1.5; }
+.locali-hint code {
+  background: #1e293b;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 10px;
+}
+.locali-empty { color: #475569; font-size: 11px; padding: 4px 0; }
+
+/* ── No results ── */
+.locali-no-results { text-align: center; padding: 12px 0; }
+.locali-no-results p { color: #64748b; font-size: 12px; margin-bottom: 8px; }
+
+/* ── Buttons ── */
+.locali-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.locali-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.locali-btn-secondary {
+  background: #1e293b;
+  color: #94a3b8;
+  border: 1px solid #334155;
+}
+.locali-btn-secondary:hover:not(:disabled) { background: #334155; }
+
+/* ── Time Picker Overlay ── */
+.locali-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  backdrop-filter: blur(4px);
+}
+.locali-picker {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 20px 16px 16px;
+  width: 260px;
+  position: relative;
+  text-align: center;
+}
+.locali-picker-close {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px;
+}
+.locali-picker-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.locali-picker-store {
+  font-size: 12px;
+  color: #60a5fa;
+  margin-bottom: 14px;
+}
+.locali-picker-label {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 10px;
+}
+
+/* Time option buttons */
+.locali-time-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.locali-time-btn {
+  padding: 10px 8px;
+  border-radius: 8px;
+  border: 2px solid #334155;
+  background: #0f172a;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.locali-time-btn:hover { border-color: #0038b8; color: #f1f5f9; }
+.locali-time-btn-active {
+  border-color: #0038b8 !important;
+  background: #0038b820;
+  color: #f1f5f9 !important;
+}
+
+/* Send button */
+.locali-send-btn {
+  width: 100%;
+  padding: 11px;
+  background: #0038b8;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  margin-bottom: 6px;
+}
+.locali-send-btn:hover:not(:disabled) { opacity: 0.9; }
+.locali-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.locali-send-status {
+  font-size: 11px;
+  color: #fca5a5;
+  min-height: 16px;
+}
+
+/* ── Inquiry sent card (in panel) ── */
+.locali-inquiry-sent {
+  margin: 6px 12px;
+  padding: 8px 10px;
+  background: #0f2b1a;
+  border: 1px solid #16a34a44;
+  border-radius: 8px;
+  font-size: 11px;
+  color: #86efac;
+}
+.locali-inquiry-sent-icon { margin-left: 4px; }
+
+/* Timer bar in panel */
+.locali-inquiry-timer { margin-top: 6px; }
+.locali-timer-bar {
+  height: 4px;
+  background: #1e293b;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 3px;
+}
+.locali-timer-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 1s linear;
+}
+.locali-timer-green  { background: #22c55e; }
+.locali-timer-yellow { background: #eab308; }
+.locali-timer-red    { background: #ef4444; animation: pulse 1s infinite; }
+.locali-timer-expired { background: #475569; }
+@keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
+
+.locali-timer-label {
+  font-size: 10px;
+  color: #64748b;
+}
+
+/* ── Section title row with radar button ── */
+.locali-section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.locali-radar-btn {
+  background: linear-gradient(135deg, #0a1628, #0d2240);
+  border: 1px solid #00ffe744;
+  color: #00ffe7;
+  font-size: 10px;
+  font-family: monospace;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: all 0.2s;
+  text-shadow: 0 0 8px #00ffe7;
+}
+.locali-radar-btn:hover {
+  background: linear-gradient(135deg, #0d2240, #0f3060);
+  border-color: #00ffe7;
+  box-shadow: 0 0 10px #00ffe744;
+}
+
+/* ── Radar Overlay ── */
+.locali-radar-overlay {
+  background: rgba(2, 5, 12, 0.95) !important;
+  backdrop-filter: blur(8px) !important;
+  flex-direction: column;
+  padding: 0;
+}
+.locali-radar-hud {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0 8px;
+}
+.locali-radar-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 14px 10px;
+  font-family: monospace;
+  font-size: 11px;
+  color: #00ffe7;
+  letter-spacing: 1px;
+  text-shadow: 0 0 10px #00ffe7;
+  border-bottom: 1px solid #00ffe722;
+  margin-bottom: 10px;
+}
+.locali-radar-wrap {
+  position: relative;
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 0 30px #00ffe722, inset 0 0 30px rgba(0,0,0,0.5);
+  border: 1.5px solid #00ffe744;
+}
+#ar-canvas { display: block; }
+
+/* Radar legend */
+.locali-radar-legend {
+  width: 100%;
+  padding: 8px 12px 4px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.locali-radar-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  font-size: 10px;
+  font-family: monospace;
+  color: #94a3b8;
+  border-bottom: 1px solid #0f1f2e;
+}
+.ar-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.ar-lname {
+  flex: 1;
+  color: #c8fff5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ar-ldist {
+  color: #00ffe7;
+  font-size: 9px;
+  flex-shrink: 0;
+}
+
+/* ── Floating Action Button (non-AliExpress pages) ── */
+#locali-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 16px;
+  z-index: 2147483646;
+  background: linear-gradient(135deg, #0038b8, #1d5fe8);
+  border: none;
+  border-radius: 22px;
+  padding: 10px 18px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(0,56,184,0.5);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+#locali-fab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,56,184,0.7);
+}
+
+/* ── Big CTA Button ── */
+@keyframes locali-glow {
+  0%, 100% { box-shadow: 0 4px 20px rgba(0,56,184,0.55), 0 0 0 0 rgba(0,56,184,0.3); }
+  50%       { box-shadow: 0 6px 28px rgba(0,56,184,0.75), 0 0 0 6px rgba(0,56,184,0); }
+}
+@keyframes locali-arrow-bounce {
+  0%, 100% { transform: translateX(0); }
+  50%       { transform: translateX(-4px); }
+}
+
+.locali-cta-wrap {
+  padding: 12px 12px 14px;
+  background: linear-gradient(180deg, transparent 0%, #0a111f 100%);
+  border-top: 1px solid #1e293b;
+}
+
+.locali-cta-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #0038b8 0%, #1d5fe8 50%, #0a4ad4 100%);
+  background-size: 200% 200%;
+  text-decoration: none;
+  color: #fff;
+  animation: locali-glow 2.4s ease-in-out infinite;
+  transition: transform 0.15s, filter 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.locali-cta-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%);
+  border-radius: 12px;
+  pointer-events: none;
+}
+.locali-cta-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.12);
+}
+
+.locali-cta-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.locali-cta-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: right;
+}
+.locali-cta-main {
+  font-size: 14px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 0.01em;
+}
+.locali-cta-sub {
+  font-size: 10px;
+  color: rgba(255,255,255,0.72);
+  font-weight: 500;
+}
+
+.locali-cta-arrow {
+  font-size: 22px;
+  font-weight: 300;
+  color: rgba(255,255,255,0.8);
+  flex-shrink: 0;
+  animation: locali-arrow-bounce 1.6s ease-in-out infinite;
+}
+
+/* ══ Premium UX (v0.3) ══════════════════════════════════════════ */
+
+/* Animación de entrada: slide-in desde la derecha */
+#locali-panel {
+  transform: translateX(120%);
+  opacity: 0;
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+}
+#locali-panel.locali-in {
+  transform: translateX(0);
+  opacity: 1;
+}
+#locali-panel.locali-dragging {
+  transition: none;
+  user-select: none;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.65);
+}
+
+/* Header arrastrable */
+.locali-header {
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+#locali-panel.locali-dragging .locali-header { cursor: grabbing; }
+
+/* Botón minimizar */
+#locali-minimize {
+  background: rgba(255,255,255,0.15);
+  border: none;
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 5px;
+  padding: 5px 9px;
+  margin-left: 22px;
+  transition: background 0.2s;
+}
+#locali-minimize:hover { background: rgba(255,255,255,0.3); }
+
+/* Estado minimizado: solo el header visible */
+#locali-panel.locali-min { overflow: hidden; }
+#locali-panel.locali-min .locali-body > *:not(.locali-header) { display: none; }
+
+/* Skeleton loading con shimmer */
+.locali-loading-label {
+  display: block;
+  padding: 10px 12px 2px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+.locali-skel-card {
+  margin: 8px 12px;
+  padding: 10px;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+}
+.locali-skel {
+  position: relative;
+  overflow: hidden;
+  background: #1e293b;
+  border-radius: 4px;
+}
+.locali-skel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(148,163,184,0.18), transparent);
+  animation: locali-shimmer 1.4s infinite;
+}
+.locali-skel-line { height: 10px; margin-bottom: 8px; }
+.locali-skel-line:last-child { margin-bottom: 0; }
+@keyframes locali-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+/* Toast de ahorro */
+#locali-toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translate(-50%, 80px);
+  opacity: 0;
+  z-index: 2147483647;
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  direction: rtl;
+  padding: 12px 22px;
+  border-radius: 30px;
+  box-shadow: 0 8px 28px rgba(5,150,105,0.45);
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+  pointer-events: none;
+}
+#locali-toast.locali-toast-in {
+  transform: translate(-50%, 0);
+  opacity: 1;
+}
+
+/* Entrada con stagger para cards de tiendas */
+.locali-store {
+  animation: locali-fadeup 0.4s ease both;
+}
+.locali-store:nth-child(2) { animation-delay: 0.05s; }
+.locali-store:nth-child(3) { animation-delay: 0.10s; }
+.locali-store:nth-child(4) { animation-delay: 0.15s; }
+.locali-store:nth-child(5) { animation-delay: 0.20s; }
+@keyframes locali-fadeup {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

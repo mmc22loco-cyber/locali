@@ -1,0 +1,398 @@
+# AliLocal — Chrome Extension
+## Comparador AliExpress vs. Tiendas Locales de Israel
+
+---
+
+## Contexto del proyecto
+
+AliLocal es una extensión de Chrome que aparece automáticamente cuando el usuario
+está en una página de producto de AliExpress. Compara el precio del producto con
+tiendas locales israelíes (online y físicas), calculando el costo real incluyendo
+IVA de importación, tiempo de espera de envío, y distancia a tiendas físicas.
+
+**El problema que resuelve:**
+Desde junio 2026, Israel bajó la exención de IVA en importación personal a $75.
+Compras entre $75-$500 pagan 18% de IVA en aduana. El usuario no sabe si realmente
+le conviene comprar en AliExpress o ir a una tienda local. AliLocal hace ese cálculo
+automáticamente.
+
+**Diferenciador único:**
+Nadie en el mundo compara AliExpress contra tiendas físicas locales con
+geolocalización. Los competidores (AliPrice, Pricearchive, Cheaperly) solo comparan
+entre plataformas online globales.
+
+---
+
+## Stack técnico
+
+- **Extensión:** Chrome Manifest V3 (content script + panel lateral)
+- **Backend:** FastAPI + Python 3.11 (corre en localhost:8000 para desarrollo)
+- **Matching engine:** Claude API (Haiku para extracción, Sonnet para verificación)
+- **Búsqueda local:** Google Custom Search API (tiendas online Israel)
+- **Tiendas físicas:** Google Places API (geolocalización)
+- **Cache:** Supabase (evitar llamadas repetidas para el mismo producto)
+- **Afiliados:** AliExpress Affiliate API (el developer ya tiene cuenta registrada)
+
+---
+
+## Estructura de carpetas esperada
+
+```
+alilocal/
+├── CLAUDE.md                  ← este archivo
+├── matching_engine.py         ← algoritmo de matching YA CONSTRUIDO
+├── main.py                    ← servidor FastAPI
+├── .env                       ← API keys (no commitear)
+├── requirements.txt
+└── extension/
+    ├── manifest.json
+    ├── content.js             ← se inyecta en páginas de AliExpress
+    ├── panel.js               ← lógica del panel lateral
+    ├── panel.css              ← estilos del panel
+    ├── background.js          ← service worker
+    └── icons/
+        ├── icon16.png
+        ├── icon48.png
+        └── icon128.png
+```
+
+---
+
+## Variables de entorno (.env)
+
+```
+ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_API_KEY=...
+GOOGLE_CSE_ID=...
+SUPABASE_URL=...
+SUPABASE_KEY=...
+ALIEXPRESS_APP_KEY=...
+ALIEXPRESS_APP_SECRET=...
+```
+
+---
+
+## Backend (main.py)
+
+Servidor FastAPI con estos endpoints:
+
+### POST /match
+Recibe datos del producto de AliExpress, devuelve matches locales.
+
+Request body:
+```json
+{
+  "item_id": "1005006123456789",
+  "title": "Anker Soundcore Liberty 4 NC Wireless Earbuds...",
+  "price_usd": 64.99,
+  "specs": {"Brand": "Anker", "Model": "A3947"},
+  "user_lat": 32.0853,
+  "user_lng": 34.7818
+}
+```
+
+Response:
+```json
+{
+  "status": "ok",
+  "identity": {
+    "brand": "Anker",
+    "model": "Soundcore Liberty 4 NC",
+    "model_code": "A3947",
+    "category_he": "אוזניות אלחוטיות",
+    "is_branded": true,
+    "confidence": 0.95
+  },
+  "cost_analysis": {
+    "aliexpress_price_usd": 64.99,
+    "aliexpress_price_ils": 243.71,
+    "vat_applies": false,
+    "vat_amount_ils": 0,
+    "shipping_days_estimate": 18,
+    "total_cost_ils": 243.71
+  },
+  "online": [
+    {
+      "store": "ksp",
+      "title": "Anker Soundcore Liberty 4 NC A3947",
+      "price_ils": 289.0,
+      "url": "https://ksp.co.il/...",
+      "tier": "exact"
+    }
+  ],
+  "physical": [
+    {
+      "name": "KSP - דיזנגוף סנטר",
+      "address": "שאול המלך 50, תל אביב",
+      "distance_km": 1.8,
+      "open_now": true,
+      "google_maps_url": "https://maps.google.com/..."
+    }
+  ]
+}
+```
+
+### GET /health
+Devuelve {"status": "ok"} para verificar que el servidor corre.
+
+**Para desarrollo:** si las API keys de Google no están configuradas,
+el endpoint /match devuelve datos mockeados realistas para poder testear
+la extensión sin costo.
+
+---
+
+## Lógica de cálculo de IVA (importante)
+
+```python
+USD_TO_ILS = 3.75  # actualizar según tipo de cambio
+
+def calculate_real_cost(price_usd: float) -> dict:
+    price_ils = price_usd * USD_TO_ILS
+    
+    # Reglas actuales Israel (junio 2026):
+    # - Hasta $75: sin IVA, sin arancel
+    # - $75 a $500: IVA 18% sobre el valor del producto
+    # - Más de $500: IVA 18% + arancel aduanero adicional
+    
+    if price_usd <= 75:
+        vat = 0
+        vat_applies = False
+    elif price_usd <= 500:
+        vat = price_ils * 0.18
+        vat_applies = True
+    else:
+        vat = price_ils * 0.18  # más arancel, calcular por categoría
+        vat_applies = True
+    
+    return {
+        "price_ils": round(price_ils, 2),
+        "vat_applies": vat_applies,
+        "vat_amount_ils": round(vat, 2),
+        "total_cost_ils": round(price_ils + vat, 2),
+        "shipping_days_estimate": 18  # promedio AliExpress a Israel
+    }
+```
+
+---
+
+## Extensión Chrome — content.js
+
+El content script debe:
+
+1. **Detectar** que estamos en una página de producto de AliExpress.
+   URL pattern: `https://www.aliexpress.com/item/*.html`
+
+2. **Extraer del DOM:**
+   - `item_id`: del URL (el número largo antes de .html)
+   - `title`: selector `h1[data-pl="product-title"]` o similar
+   - `price_usd`: selector de precio principal
+   - `specs`: tabla de especificaciones si existe
+
+3. **Obtener geolocalización** del usuario con `navigator.geolocation.getCurrentPosition()`
+
+4. **Llamar al backend:**
+   ```javascript
+   fetch('http://localhost:8000/match', {
+     method: 'POST',
+     headers: {'Content-Type': 'application/json'},
+     body: JSON.stringify({item_id, title, price_usd, specs, user_lat, user_lng})
+   })
+   ```
+
+5. **Mostrar el panel lateral** con los resultados.
+
+---
+
+## Extensión Chrome — Panel lateral (UI)
+
+El panel aparece en el lado derecho de la pantalla, superpuesto sobre AliExpress.
+Ancho: 320px. Alto: automático según contenido. Fondo blanco con sombra.
+
+**Estados del panel:**
+
+### Cargando:
+- Logo AliLocal pequeño
+- Spinner animado
+- Texto: "מחפש מחירים מקומיים..." (Buscando precios locales...)
+
+### Resultado encontrado:
+```
+┌─────────────────────────────┐
+│ 🔍 AliLocal          [✕]   │
+├─────────────────────────────┤
+│ Anker Soundcore Liberty 4NC │
+│                             │
+│ AliExpress                  │
+│ $64.99 = ₪243              │
+│ ⚠️ Sin IVA (bajo $75)      │
+│ 📦 ~18 días de envío        │
+├─────────────────────────────┤
+│ 🏪 TIENDAS LOCALES          │
+│                             │
+│ ✅ KSP — ₪289 (EXACTO)     │
+│    🏃 Retiro hoy            │
+│    📍 1.8 km — Abierto ahora│
+│    [Ver en KSP] [Cómo llego]│
+│                             │
+│ 📱 Bug — ₪310              │
+│    📍 3.2 km                │
+│    [Ver en Bug]             │
+├─────────────────────────────┤
+│ 💡 En este caso AliExpress  │
+│    es ₪45 más barato pero   │
+│    esperás 18 días          │
+└─────────────────────────────┘
+```
+
+### Sin resultado:
+- Mensaje: "לא נמצאו חנויות מקומיות" (No se encontraron tiendas locales)
+- Botón: "בקש חיפוש ידני" (Solicitar búsqueda manual)
+  → Este botón guarda la petición en Supabase para que el operador
+    (Martín) la revise y contacte tiendas manualmente.
+
+### Diseño:
+- Fuente: sistema (no cargar fuentes externas para velocidad)
+- Colores: blanco fondo, #FF4747 acento (similar al rojo de AliExpress),
+  verde #22C55E para "más barato local", azul #3B82F6 para links
+- Botón cerrar [✕] en esquina superior derecha
+- El panel NO debe tapar el botón "Buy Now" de AliExpress
+
+---
+
+## manifest.json
+
+```json
+{
+  "manifest_version": 3,
+  "name": "AliLocal — השווה מחירים מקומיים",
+  "version": "0.1.0",
+  "description": "השווה מחירי AliExpress עם חנויות מקומיות בישראל",
+  "permissions": ["geolocation", "storage", "notifications"],
+  "host_permissions": [
+    "https://www.aliexpress.com/*",
+    "http://localhost:8000/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.aliexpress.com/item/*"],
+      "js": ["content.js"],
+      "css": ["panel.css"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  }
+}
+```
+
+---
+
+## Flujo semi-automático (operación manual)
+
+Cuando el panel muestra "Sin resultado" y el usuario presiona
+"Solicitar búsqueda manual", el backend guarda en Supabase:
+
+```sql
+-- Tabla: manual_requests
+CREATE TABLE manual_requests (
+  id uuid primary key default gen_random_uuid(),
+  item_id text,
+  title text,
+  price_usd numeric,
+  user_lat numeric,
+  user_lng numeric,
+  status text default 'pending',  -- pending / contacted / resolved
+  store_name text,
+  store_price_ils numeric,
+  created_at timestamptz default now()
+);
+```
+
+El operador (Martín) revisa estas peticiones en un dashboard simple,
+llama a la tienda, y actualiza el registro. El usuario recibe
+notificación push de Chrome cuando hay resultado.
+
+---
+
+## Datos mockeados para desarrollo
+
+Cuando `GOOGLE_API_KEY` no está configurada, `/match` devuelve:
+
+```python
+MOCK_RESPONSE = {
+    "status": "ok",
+    "identity": {
+        "brand": "Anker",
+        "model": "Soundcore Liberty 4 NC",
+        "model_code": "A3947",
+        "category_he": "אוזניות אלחוטיות",
+        "is_branded": True,
+        "confidence": 0.95
+    },
+    "cost_analysis": {
+        "aliexpress_price_usd": 64.99,
+        "aliexpress_price_ils": 243.71,
+        "vat_applies": False,
+        "vat_amount_ils": 0,
+        "total_cost_ils": 243.71,
+        "shipping_days_estimate": 18
+    },
+    "online": [
+        {
+            "store": "ksp",
+            "title": "Anker Soundcore Liberty 4 NC A3947",
+            "price_ils": 289.0,
+            "url": "https://ksp.co.il/web/cat/phones-ear-phones-10014?act=CatalogSearch&q=A3947",
+            "tier": "exact",
+            "score": 0.92
+        }
+    ],
+    "physical": [
+        {
+            "name": "KSP - דיזנגוף סנטר",
+            "address": "שאול המלך 50, תל אביב",
+            "distance_km": 1.8,
+            "open_now": True,
+            "google_maps_url": "https://maps.google.com/?q=KSP+דיזנגוף+סנטר"
+        }
+    ]
+}
+```
+
+---
+
+## Objetivo del MVP (hoy)
+
+1. ✅ Extensión carga en Chrome modo desarrollador sin errores
+2. ✅ Al entrar a cualquier producto de AliExpress aparece el panel
+3. ✅ El panel muestra datos mockeados correctamente
+4. ✅ El cálculo de IVA funciona según el precio del producto
+5. ✅ Los botones "Ver en tienda" y "Cómo llego" abren links correctos
+6. ✅ El botón [✕] cierra el panel
+
+Lo que NO es objetivo hoy:
+- Conectar APIs reales de Google
+- Deploy en Hetzner
+- Notificaciones push
+- Dashboard de peticiones manuales
+
+---
+
+## Notas importantes
+
+- El panel debe aparecer automáticamente, sin que el usuario haga click
+- AliExpress cambia sus selectores del DOM frecuentemente — usar múltiples
+  selectores en cascada como fallback
+- CORS: el backend debe permitir requests desde la extensión
+  (`allow_origins=["chrome-extension://*"]` en FastAPI)
+- La extensión debe funcionar aunque el backend esté caído (mostrar mensaje
+  amigable, no romperse)
+- Idioma del panel: hebreo con números en inglés (estándar israelí)

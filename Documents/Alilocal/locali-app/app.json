@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Locali",
+    "slug": "locali",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0038b8"
+    },
+    "android": {
+      "package": "com.locali.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#0038b8"
+      },
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
+    },
+    "extra": {
+      "backendUrl": "http://10.0.2.2:8000"
+    },
+    "plugins": []
+  }
+}
