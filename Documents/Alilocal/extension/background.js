@@ -6,7 +6,7 @@
  */
 
 // PROD: cambiar a la URL de Railway después del deploy, ej. 'https://locali-backend.up.railway.app'
-const BACKEND_URL = 'http://localhost:8000';
+const BACKEND_URL = 'https://locali-production.up.railway.app';
 
 chrome.runtime.onInstalled.addListener(() => {
   console.log('[Locali] Extension installed v0.2.0');

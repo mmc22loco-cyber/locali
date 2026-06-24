@@ -1,8 +1,8 @@
 // Configuración de Locali App
-// DEV (emulador Android): http://10.0.2.2:8000 apunta al localhost de tu PC
+// DEV (emulador Android): https://locali-production.up.railway.app apunta al localhost de tu PC
 // DEV (teléfono físico):  http://<IP-de-tu-PC>:8000  (misma red WiFi)
 // PROD: cambiar a la URL de Railway, ej. 'https://locali-backend.up.railway.app'
-export const BACKEND_URL = 'http://10.0.2.2:8000';
+export const BACKEND_URL = 'https://locali-production.up.railway.app';
 
 export const COLORS = {
   blue: '#0038b8',

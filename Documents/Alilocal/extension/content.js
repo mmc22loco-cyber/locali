@@ -12,7 +12,7 @@
 
   // ── Config ────────────────────────────────────────────────────────────────
   // PROD: cambiar a la URL de Vercel después del deploy, ej. 'https://locali.vercel.app'
-  const LOCALI_WEB_BASE = 'https://karovil.duckdns.org';
+  const LOCALI_WEB_BASE = 'https://locali-ebon.vercel.app';
 
 
   // ── Extraccion del producto ───────────────────────────────────────────────
