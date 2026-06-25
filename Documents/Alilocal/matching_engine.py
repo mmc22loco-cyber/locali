@@ -56,51 +56,101 @@ def calculate_real_cost(price_usd: float) -> dict:
 # ─── Extracción de identidad con Claude Haiku ──────────────────────────────────
 
 async def extract_product_identity(title: str, specs: dict, client: AsyncAnthropic) -> dict:
-    prompt = f"""Extract product identity from this AliExpress listing.
+    prompt = f"""You are a product search expert for Israeli stores.
+Analyze this AliExpress product and return a JSON with search strategy for Israeli stores.
+
 Return ONLY a JSON object with these exact fields:
 {{
   "brand": "brand name or empty string",
   "model": "model name or empty string",
   "model_code": "alphanumeric model code or empty string",
-  "category_he": "product category in Hebrew",
+  "category_he": "product category in Hebrew (2-3 words max)",
+  "category_type": "electronics|computers|phones|tools|automotive|clothing|home|toys|sports|other",
   "is_branded": true/false,
   "confidence": 0.0 to 1.0,
-  "search_query": "short 2-4 word Hebrew search query"
+  "search_query": "best single search query",
+  "search_queries": ["query1", "query2", "query3"],
+  "relevant_stores": ["ksp","bug","ivory","zap"]
 }}
 
 Product title: {title}
 Specs: {json.dumps(specs, ensure_ascii=False)}
 
-Rules:
-- is_branded = true only if well-known international brand
-- search_query: 2-4 words MAX, prefer Hebrew category words
-  * DEKO cordless drill -> "מקדחה אלחוטית"
-  * Xiaomi earbuds -> "אוזניות אלחוטיות Xiaomi"
-  * generic USB hub -> "רכזת USB"
-  * NEVER include model codes or long titles
-- Return ONLY the JSON, no explanation"""
+Rules for search_queries (specific → generic → adapt to category):
+- query1: most specific (brand + model code if known): "Sony WH-1000XM5", "Samsung Galaxy S24"
+- query2: brand + Hebrew category: "אוזניות Sony", "מקדחה Bosch"
+- query3: Hebrew category only, stripped of brand/model: "אוזניות מבטלות רעש", "מקדחה אלחוטית"
+  → If category_type is NOT electronics/computers/phones/tools, query3 = most generic Hebrew term for the category
+  → ALWAYS translate to Hebrew by query3, NEVER use English words in query3
+
+Rules for relevant_stores:
+- electronics/computers/phones: ["ksp","bug","ivory","zap"]
+- tools/hardware: ["ksp","bug"]
+- automotive/car accessories: [] (empty - Israeli electronics stores don't carry these)
+- clothing/fashion/textile: [] (empty)
+- home/kitchen/garden: [] (empty - maybe future)
+- toys/baby: [] (empty)
+- sports/outdoor: [] (empty)
+- other/unknown: ["ksp","bug","ivory","zap"] (try everything)
+
+Additional rules:
+- NEVER include in queries: year, color, quantity words, "New", "2024", seller spam
+- search_query = query1
+- Return ONLY the JSON, no explanation
+
+Examples:
+title: "Short Plush White Zebra Car Seat Covers" →
+  category_type: "automotive", relevant_stores: [],
+  queries: ["כיסויי מושבים זברה", "כיסויי מושבים לרכב", "אביזרי רכב"]
+title: "Sony WH-1000XM5 Wireless Noise Canceling Headphones" →
+  category_type: "electronics", relevant_stores: ["ksp","bug","ivory","zap"],
+  queries: ["Sony WH-1000XM5", "אוזניות Sony", "אוזניות מבטלות רעש"]
+title: "Xiaomi Redmi Note 13 Pro 5G 256GB NFC" →
+  category_type: "phones", relevant_stores: ["ksp","bug","ivory","zap"],
+  queries: ["Xiaomi Redmi Note 13 Pro", "סמארטפון Xiaomi", "סמארטפון 5G"]
+title: "RGB Gaming Mouse 7200DPI Wired USB" →
+  category_type: "computers", relevant_stores: ["ksp","bug","ivory","zap"],
+  queries: ["עכבר גיימינג RGB", "עכבר גיימינג", "עכבר מחשב"]
+title: "Women Summer Casual Floral Dress" →
+  category_type: "clothing", relevant_stores: [],
+  queries: ["שמלת קיץ פרחונית", "שמלה קז'ואל", "שמלת נשים"]"""
 
     try:
         message = await client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=512,
+            max_tokens=700,
             messages=[{"role": "user", "content": prompt}],
         )
         text = message.content[0].text.strip()
         match = re.search(r"\{.*\}", text, re.DOTALL)
         if match:
-            return json.loads(match.group())
+            result = json.loads(match.group())
+            if not result.get("search_queries"):
+                sq = result.get("search_query", title[:60])
+                result["search_queries"] = [sq]
+            if not result.get("search_query") and result["search_queries"]:
+                result["search_query"] = result["search_queries"][0]
+            # Default relevant_stores if missing
+            if "relevant_stores" not in result:
+                result["relevant_stores"] = ["ksp","bug","ivory","zap"]
+            return result
     except Exception as e:
         print(f"[identity] Error: {e}")
 
+    brand = _extract_brand_fallback(title)
+    fallback_query = (brand + " " + title.split()[1] if brand and len(title.split()) > 1
+                      else title[:40])
     return {
-        "brand": _extract_brand_fallback(title),
+        "brand": brand,
         "model": "",
         "model_code": "",
-        "category_he": "מוצר אלקטרוני",
-        "is_branded": False,
+        "category_he": "מוצר",
+        "category_type": "other",
+        "is_branded": bool(brand),
         "confidence": 0.3,
-        "search_query": title[:80],
+        "search_query": fallback_query,
+        "search_queries": [fallback_query, title[:40]],
+        "relevant_stores": ["ksp","bug","ivory","zap"],
     }
 
 
@@ -225,12 +275,16 @@ def _find_products_in_json(obj, depth: int = 0) -> list:
 
 
 # ── Afiliados ────────────────────────────────────────────────────────────────
-# Parámetros de afiliado por tienda. Cuando se aprueben las cuentas de afiliado,
-# reemplazar los IDs placeholder (LOCALI) por los IDs reales de cada programa:
-#   KSP:   https://ksp.co.il (programa de partners)
-#   Zap:   https://www.zap.co.il/affiliate
+# AliExpress Tracking ID: "locali" (creado 2026-06-25, portals.aliexpress.com)
+# App Key pendiente de aprobación (1-3 días hábiles desde 2026-06-25).
+#
+# IDs de tiendas israelíes (LOCALI = placeholder hasta aprobar):
+#   KSP:   https://ksp.co.il (programa de partners) — reemplazar "LOCALI" con partner ID real
+#   Zap:   https://www.zap.co.il/affiliate           — reemplazar "LOCALI" con affid real
 #   Bug:   contactar a bug.co.il para partnership
 #   Ivory: contactar a ivory.co.il
+ALIEXPRESS_TRACKING_ID = "locali"
+
 AFFILIATE_PARAMS = {
     "ksp":   "utm_source=locali&utm_medium=extension&partner=LOCALI",
     "bug":   "utm_source=locali&utm_medium=extension&ref=locali",
@@ -246,6 +300,19 @@ def add_affiliate(store: str, url: str) -> str:
         return url
     sep = "&" if "?" in url else "?"
     return f"{url}{sep}{params}"
+
+
+def aliexpress_affiliate_url(item_id: str) -> str:
+    """Construye el URL de producto AliExpress con tracking de afiliado."""
+    if not item_id:
+        return ""
+    # Limpia el item_id (puede venir con parámetros extra)
+    clean_id = item_id.split("?")[0].split("#")[0].strip()
+    return (
+        f"https://www.aliexpress.com/item/{clean_id}.html"
+        f"?aff_trace_key={ALIEXPRESS_TRACKING_ID}"
+        f"&utm_source=locali&utm_medium=extension"
+    )
 
 
 def _normalize_product(store: str, p: dict, encoded: str) -> dict:
@@ -1001,6 +1068,7 @@ async def run_matching_pipeline(
         physical = osm_physical if osm_physical else _nearest_chain_stores(user_lat, user_lng)
         return {
             "item_id": item_id, "title": title, "price_usd": price_usd,
+            "aliexpress_url": aliexpress_affiliate_url(item_id),
             "online": online, "physical": physical,
             "cost_analysis": cost_analysis,
             "identity": {"brand": "", "model_code": "", "category_he": "מוצר",
@@ -1016,30 +1084,78 @@ async def run_matching_pipeline(
         identity = {"brand": "", "model_code": "", "category_he": "מוצר",
                     "is_branded": False, "search_query": title}
 
-    search_query = identity.get("search_query") or title
-    category_he  = identity.get("category_he", "מוצר")
-    brand        = identity.get("brand", "")
-    encoded_q    = quote(search_query)
+    category_he     = identity.get("category_he", "מוצר")
+    brand           = identity.get("brand", "")
+    search_queries  = identity.get("search_queries") or [identity.get("search_query") or title]
+    # Deduplicate while preserving order
+    seen = set()
+    search_queries = [q for q in search_queries if q and not (q in seen or seen.add(q))]
+    if not search_queries:
+        search_queries = [title[:60]]
 
-    # Online stores (parallel scrape)
-    async with httpx.AsyncClient(headers=_HEADERS, timeout=12.0, follow_redirects=True) as http:
-        ksp_task   = asyncio.create_task(_try_ksp(search_query, encoded_q, http))
-        bug_task   = asyncio.create_task(_try_bug(search_query, encoded_q, http))
-        ivory_task = asyncio.create_task(_try_ivory(search_query, encoded_q, http))
-        zap_task   = asyncio.create_task(_try_zap(search_query, encoded_q, http))
-        ksp_prods, bug_prods, ivory_prods, zap_prods = await asyncio.gather(
-            ksp_task, bug_task, ivory_task, zap_task, return_exceptions=True
-        )
+    # Determine which stores to search based on product category
+    relevant_stores = identity.get("relevant_stores", ["ksp", "bug", "ivory", "zap"])
+    category_type   = identity.get("category_type", "other")
 
+    _store_scrapers = {
+        "ksp":   _try_ksp,
+        "bug":   _try_bug,
+        "ivory": _try_ivory,
+        "zap":   _try_zap,
+    }
+
+    # Online stores: try each query in order (specific → generic) until we get real prices
     online = []
-    for store, prods in [("ksp", ksp_prods), ("bug", bug_prods),
-                          ("ivory", ivory_prods), ("zap", zap_prods)]:
-        if isinstance(prods, list) and prods:
-            online.extend(prods)
-        else:
-            if isinstance(prods, Exception):
-                print(f"[pipeline] {store} error: {prods}")
-            online.append(_search_link(store, search_query, encoded_q))
+    used_query = search_queries[0]
+
+    if not relevant_stores:
+        # Category not carried by any Israeli online store -> return informative message
+        print(f"[pipeline] category_type={category_type!r} -> no relevant stores, skipping online search")
+        online = [{
+            "store": "locali",
+            "name": f"המוצר ({category_he}) אינו נמכר בחנויות האלקטרוניקה הישראליות",
+            "price_ils": None,
+            "url": "",
+            "match_score": 0,
+            "note": f"קטגוריה: {category_he} | נסה לחפש בחנויות מקצועיות לקטגוריה זו",
+        }]
+    else:
+        async with httpx.AsyncClient(headers=_HEADERS, timeout=12.0, follow_redirects=True) as http:
+            for attempt_query in search_queries:
+                encoded_q = quote(attempt_query)
+
+                # Only search relevant stores for this category
+                tasks = {
+                    store: asyncio.create_task(_store_scrapers[store](attempt_query, encoded_q, http))
+                    for store in relevant_stores if store in _store_scrapers
+                }
+                results = {}
+                if tasks:
+                    done = await asyncio.gather(*tasks.values(), return_exceptions=True)
+                    results = dict(zip(tasks.keys(), done))
+
+                attempt_online = []
+                for store, prods in results.items():
+                    if isinstance(prods, list) and prods:
+                        attempt_online.extend(prods)
+                    elif isinstance(prods, Exception):
+                        print(f"[pipeline] {store} error ({attempt_query!r}): {prods}")
+
+                priced = [r for r in attempt_online if r.get("price_ils")]
+                print(f"[pipeline] query={attempt_query!r} stores={relevant_stores} -> {len(attempt_online)} results, {len(priced)} priced")
+
+                if priced or attempt_query == search_queries[-1]:
+                    used_query = attempt_query
+                    online = attempt_online
+                    stores_found = {r["store"] for r in attempt_online}
+                    # Fill gaps with Hebrew-adapted search links
+                    for store in relevant_stores:
+                        if store not in stores_found:
+                            online.append(_search_link(store, attempt_query, quote(attempt_query)))
+                    break
+                # No priced results — try next (more generic) query
+
+    encoded_q = quote(used_query)
 
     # Physical stores: Google Places → OSM fallback → chain fallback
     physical: list = []
@@ -1068,6 +1184,7 @@ async def run_matching_pipeline(
 
     return {
         "item_id": item_id, "title": title, "price_usd": price_usd,
+        "aliexpress_url": aliexpress_affiliate_url(item_id),
         "online": online[:8], "physical": physical[:6],
         "cost_analysis": cost_analysis,
         "identity": identity,
