@@ -85,12 +85,13 @@ Rules for search_queries (specific → generic → adapt to category):
 
 Rules for relevant_stores:
 - electronics/computers/phones: ["ksp","bug","ivory","zap"]
-- tools/hardware: ["ksp","bug"]
-- automotive/car accessories: [] (empty - Israeli electronics stores don't carry these)
-- clothing/fashion/textile: [] (empty)
-- home/kitchen/garden: [] (empty - maybe future)
-- toys/baby: [] (empty)
-- sports/outdoor: [] (empty)
+- tools/hardware: ["ksp","bug","ace"]
+- home/kitchen/furniture/garden: ["ace","home_center","ikea"]
+- toys/baby/kids: ["toys_r_us","megatoy","zap"]
+- sports/outdoor/fitness: ["decathlon","zap"]
+- health/beauty/pharmacy: ["super_pharm"]
+- clothing/fashion/textile: ["termoshop","zap"]
+- automotive/car accessories: [] (empty)
 - other/unknown: ["ksp","bug","ivory","zap"] (try everything)
 
 Additional rules:
@@ -162,10 +163,24 @@ def _extract_brand_fallback(title: str) -> str:
 # ─── Búsqueda directa en tiendas israelíes ───────────────────────────────────
 
 _STORE_SEARCH_URLS = {
-    "ksp":   "https://ksp.co.il/web/cat/?search={q}",
-    "bug":   "https://www.bug.co.il/search?q={q}",
-    "ivory": "https://www.ivory.co.il/catalog.php?act=search&q={q}",
-    "zap":   "https://www.zap.co.il/search.aspx?keyword={q}",
+    # Electronics
+    "ksp":          "https://ksp.co.il/web/cat/?search={q}",
+    "bug":          "https://www.bug.co.il/search?q={q}",
+    "ivory":        "https://www.ivory.co.il/catalog.php?act=search&q={q}",
+    "zap":          "https://www.zap.co.il/search.aspx?keyword={q}",
+    # Home & tools
+    "ace":          "https://www.ace.co.il/search?q={q}",
+    "home_center":  "https://www.homecenter.co.il/homecenter/search.do?q={q}",
+    "ikea":         "https://www.ikea.com/il/he/search/?q={q}",
+    # Toys & baby
+    "toys_r_us":    "https://www.toysrus.co.il/search#q={q}&t=All",
+    "megatoy":      "https://www.megatoy.co.il/search?q={q}",
+    # Sports & outdoor
+    "decathlon":    "https://www.decathlon.co.il/search?Ntt={q}",
+    # Health & beauty
+    "super_pharm":  "https://www.super-pharm.co.il/search?q={q}",
+    # Fashion/general
+    "termoshop":    "https://termoshop.co.il/search?q={q}",
 }
 
 _HEADERS = {
@@ -182,10 +197,18 @@ _HEADERS = {
 }
 
 _STORE_BASES = {
-    "ksp":   "https://ksp.co.il",
-    "bug":   "https://www.bug.co.il",
-    "ivory": "https://www.ivory.co.il",
-    "zap":   "https://www.zap.co.il",
+    "ksp":         "https://ksp.co.il",
+    "bug":         "https://www.bug.co.il",
+    "ivory":       "https://www.ivory.co.il",
+    "zap":         "https://www.zap.co.il",
+    "ace":         "https://www.ace.co.il",
+    "home_center": "https://www.homecenter.co.il",
+    "ikea":        "https://www.ikea.com/il/he",
+    "toys_r_us":   "https://www.toysrus.co.il",
+    "megatoy":     "https://www.megatoy.co.il",
+    "decathlon":   "https://www.decathlon.co.il",
+    "super_pharm": "https://www.super-pharm.co.il",
+    "termoshop":   "https://termoshop.co.il",
 }
 
 
