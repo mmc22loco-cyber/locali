@@ -65,7 +65,7 @@ Return ONLY a JSON object with these exact fields:
   "model": "model name or empty string",
   "model_code": "alphanumeric model code or empty string",
   "category_he": "product category in Hebrew (2-3 words max)",
-  "category_type": "electronics|computers|phones|tools|automotive|clothing|home|toys|sports|other",
+  "category_type": "electronics|computers|phones|tools|automotive|clothing|home|toys|collectibles|sports|health|other",
   "is_branded": true/false,
   "confidence": 0.0 to 1.0,
   "search_query": "best single search query",
@@ -87,12 +87,13 @@ Rules for relevant_stores:
 - electronics/computers/phones: ["ksp","bug","ivory","zap"]
 - tools/hardware: ["ksp","bug","ace"]
 - home/kitchen/furniture/garden: ["ace","home_center","ikea"]
-- toys/baby/kids: ["toys_r_us","megatoy","zap"]
+- toys/baby/kids/action figures/collectibles: ["toys_r_us","megatoy","zap"]
+- collectibles/figurines/models/anime: ["toys_r_us","megatoy","zap"]
 - sports/outdoor/fitness: ["decathlon","zap"]
 - health/beauty/pharmacy: ["super_pharm"]
 - clothing/fashion/textile: ["termoshop","zap"]
 - automotive/car accessories: [] (empty)
-- other/unknown: ["ksp","bug","ivory","zap"] (try everything)
+- other/unknown: ["zap"] (Zap covers many categories)
 
 Additional rules:
 - NEVER include in queries: year, color, quantity words, "New", "2024", seller spam
@@ -113,8 +114,14 @@ title: "RGB Gaming Mouse 7200DPI Wired USB" →
   category_type: "computers", relevant_stores: ["ksp","bug","ivory","zap"],
   queries: ["עכבר גיימינג RGB", "עכבר גיימינג", "עכבר מחשב"]
 title: "Women Summer Casual Floral Dress" →
-  category_type: "clothing", relevant_stores: [],
-  queries: ["שמלת קיץ פרחונית", "שמלה קז'ואל", "שמלת נשים"]"""
+  category_type: "clothing", relevant_stores: ["termoshop","zap"],
+  queries: ["שמלת קיץ פרחונית", "שמלה קז'ואל", "שמלת נשים"]
+title: "Comics Avengers Iron Man Spider-Man Desktop Decoration Model Children Toys Birthday" →
+  category_type: "toys", relevant_stores: ["toys_r_us","megatoy","zap"],
+  queries: ["דמויות אוונג'רס איירון מן", "דמויות גיבורי על", "צעצועי גיבורי על"]
+title: "Yoga Mat Non Slip Fitness Exercise" →
+  category_type: "sports", relevant_stores: ["decathlon","zap"],
+  queries: ["מזרן יוגה", "מזרן כושר", "ציוד כושר"]"""
 
     try:
         message = await client.messages.create(
