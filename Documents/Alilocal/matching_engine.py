@@ -55,9 +55,13 @@ def calculate_real_cost(price_usd: float) -> dict:
 
 # ─── Extracción de identidad con Claude Haiku ──────────────────────────────────
 
-async def extract_product_identity(title: str, specs: dict, client: AsyncAnthropic) -> dict:
+async def extract_product_identity(title: str, specs: dict, client: AsyncAnthropic, image_url: str = "") -> dict:
     prompt = f"""You are a product search expert for Israeli stores.
 Analyze this AliExpress product and return a JSON with search strategy for Israeli stores.
+
+IMPORTANT: If a product image is provided, treat it as the PRIMARY signal — AliExpress titles
+are often SEO keyword spam and unreliable. Read any visible brand logos, model codes or text in
+the image to identify the real product. Use the title only to confirm or fill gaps.
 
 Return ONLY a JSON object with these exact fields:
 {{
@@ -65,7 +69,7 @@ Return ONLY a JSON object with these exact fields:
   "model": "model name or empty string",
   "model_code": "alphanumeric model code or empty string",
   "category_he": "product category in Hebrew (2-3 words max)",
-  "category_type": "electronics|computers|phones|tools|automotive|clothing|home|toys|sports|other",
+  "category_type": "electronics|computers|phones|tools|automotive|clothing|home|toys|collectibles|sports|health|other",
   "is_branded": true/false,
   "confidence": 0.0 to 1.0,
   "search_query": "best single search query",
@@ -83,16 +87,19 @@ Rules for search_queries (specific → generic → adapt to category):
   → If category_type is NOT electronics/computers/phones/tools, query3 = most generic Hebrew term for the category
   → ALWAYS translate to Hebrew by query3, NEVER use English words in query3
 
-Rules for relevant_stores:
+Rules for relevant_stores (return ALL that could plausibly carry the product — be generous,
+list 4-6 stores; ALWAYS include "zap" because it is a price-comparison aggregator covering
+nearly every category in Israel; NEVER return an empty list):
 - electronics/computers/phones: ["ksp","bug","ivory","zap"]
-- tools/hardware: ["ksp","bug","ace"]
-- home/kitchen/furniture/garden: ["ace","home_center","ikea"]
-- toys/baby/kids: ["toys_r_us","megatoy","zap"]
-- sports/outdoor/fitness: ["decathlon","zap"]
-- health/beauty/pharmacy: ["super_pharm"]
+- tools/hardware: ["ace","home_center","ksp","zap"]
+- home/kitchen/furniture/garden: ["ace","home_center","ikea","zap"]
+- toys/baby/kids/action figures: ["toys_r_us","megatoy","zap","ace"]
+- collectibles/figurines/models/anime: ["toys_r_us","megatoy","zap"]
+- sports/outdoor/fitness: ["decathlon","zap","ace"]
+- health/beauty/pharmacy: ["super_pharm","zap"]
 - clothing/fashion/textile: ["termoshop","zap"]
-- automotive/car accessories: [] (empty)
-- other/unknown: ["ksp","bug","ivory","zap"] (try everything)
+- automotive/car accessories: ["zap","ace","ksp"]
+- other/unknown: ["zap","ace","home_center","ksp"] (broad coverage — let the user choose)
 
 Additional rules:
 - NEVER include in queries: year, color, quantity words, "New", "2024", seller spam
@@ -101,8 +108,11 @@ Additional rules:
 
 Examples:
 title: "Short Plush White Zebra Car Seat Covers" →
-  category_type: "automotive", relevant_stores: [],
+  category_type: "automotive", relevant_stores: ["zap","ace","ksp"],
   queries: ["כיסויי מושבים זברה", "כיסויי מושבים לרכב", "אביזרי רכב"]
+title: "Colorful 6 Styles Glitter Dumpling Squishy Stress Relief Toy" →
+  category_type: "toys", relevant_stores: ["toys_r_us","megatoy","zap","ace"],
+  queries: ["כדור לחיצה נצנצים", "צעצוע לחיצה סקוויש", "צעצועי לחץ"]
 title: "Sony WH-1000XM5 Wireless Noise Canceling Headphones" →
   category_type: "electronics", relevant_stores: ["ksp","bug","ivory","zap"],
   queries: ["Sony WH-1000XM5", "אוזניות Sony", "אוזניות מבטלות רעש"]
@@ -113,15 +123,44 @@ title: "RGB Gaming Mouse 7200DPI Wired USB" →
   category_type: "computers", relevant_stores: ["ksp","bug","ivory","zap"],
   queries: ["עכבר גיימינג RGB", "עכבר גיימינג", "עכבר מחשב"]
 title: "Women Summer Casual Floral Dress" →
-  category_type: "clothing", relevant_stores: [],
-  queries: ["שמלת קיץ פרחונית", "שמלה קז'ואל", "שמלת נשים"]"""
+  category_type: "clothing", relevant_stores: ["termoshop","zap"],
+  queries: ["שמלת קיץ פרחונית", "שמלה קז'ואל", "שמלת נשים"]
+title: "Comics Avengers Iron Man Spider-Man Desktop Decoration Model Children Toys Birthday" →
+  category_type: "toys", relevant_stores: ["toys_r_us","megatoy","zap","ace"],
+  queries: ["דמויות אוונג'רס איירון מן", "דמויות גיבורי על", "צעצועי גיבורי על"]
+title: "Yoga Mat Non Slip Fitness Exercise" →
+  category_type: "sports", relevant_stores: ["decathlon","zap","ace"],
+  queries: ["מזרן יוגה", "מזרן כושר", "ציוד כושר"]
+title: "Stainless Steel Kitchen Knife Set with Block" →
+  category_type: "home", relevant_stores: ["ace","home_center","ikea","zap"],
+  queries: ["סט סכינים למטבח", "סכיני מטבח", "כלי מטבח"]"""
 
-    try:
-        message = await client.messages.create(
+    # Build content blocks: image first (primary signal), then the text prompt.
+    user_content = []
+    if image_url:
+        user_content.append({
+            "type": "image",
+            "source": {"type": "url", "url": image_url},
+        })
+    user_content.append({"type": "text", "text": prompt})
+
+    async def _call(content):
+        return await client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=700,
-            messages=[{"role": "user", "content": prompt}],
+            messages=[{"role": "user", "content": content}],
         )
+
+    try:
+        try:
+            message = await _call(user_content)
+        except Exception as img_err:
+            # Image URL unreachable/invalid → retry text-only so we never lose the match.
+            if image_url:
+                print(f"[identity] Image failed ({img_err}); retrying text-only")
+                message = await _call([{"type": "text", "text": prompt}])
+            else:
+                raise
         text = message.content[0].text.strip()
         match = re.search(r"\{.*\}", text, re.DOTALL)
         if match:
@@ -783,7 +822,14 @@ _IL_CHAINS = [
     {"name": "צומת ספרים - גבעתיים",    "lat": 32.0690, "lng": 34.8090, "phone": "+97235555555", "website": "https://www.tzomet.co.il",        "address": "גבעתיים",                      "categories": ["books","stationery"]},
     # ── Hardware / DIY ──
     {"name": "ACE - ראשון לציון",       "lat": 31.9640, "lng": 34.8080, "phone": "+97239521234", "website": "https://www.ace.co.il",           "address": "ראשון לציון",                  "categories": ["tools","hardware","garden"]},
-    {"name": "ACE - פתח תקווה",         "lat": 32.0870, "lng": 34.8900, "phone": "+97239311234", "website": "https://www.ace.co.il",           "address": "פתח תקווה",                    "categories": ["tools","hardware","garden"]},
+    {"name": "ACE - פתח תקווה",         "lat": 32.0870, "lng": 34.8900, "phone": "+97239311234", "website": "https://www.ace.co.il",           "address": "פתח תקווה",                    "categories": ["tools","hardware","garden","home"]},
+    {"name": "ACE - תל אביב",           "lat": 32.0850, "lng": 34.7900, "phone": "", "website": "https://www.ace.co.il",           "address": "תל אביב",                      "categories": ["tools","hardware","garden","home"]},
+    # ── Home, Kitchen & Furniture ──
+    {"name": "Home Center - ראשון לציון","lat": 31.9700, "lng": 34.8000, "phone": "", "website": "https://www.homecenter.co.il",     "address": "ראשון לציון",                  "categories": ["home","furniture","kitchen","garden","tools"]},
+    {"name": "Home Center - תל אביב",   "lat": 32.0900, "lng": 34.7950, "phone": "", "website": "https://www.homecenter.co.il",     "address": "תל אביב",                      "categories": ["home","furniture","kitchen","garden"]},
+    {"name": "Home Center - פתח תקווה", "lat": 32.0880, "lng": 34.8850, "phone": "", "website": "https://www.homecenter.co.il",     "address": "פתח תקווה",                    "categories": ["home","furniture","kitchen","garden"]},
+    {"name": "IKEA - ראשון לציון",      "lat": 31.9760, "lng": 34.7740, "phone": "", "website": "https://www.ikea.com/il/he/",      "address": "ראשון לציון",                  "categories": ["home","furniture","kitchen"]},
+    {"name": "IKEA - נתניה",            "lat": 32.2870, "lng": 34.8540, "phone": "", "website": "https://www.ikea.com/il/he/",      "address": "נתניה",                        "categories": ["home","furniture","kitchen"]},
     # ── Health & Beauty ──
     {"name": "Super-Pharm - ראשון לציון","lat": 31.9620, "lng": 34.8050, "phone": "+97239523456", "website": "https://www.super-pharm.co.il", "address": "ראשון לציון",                  "categories": ["health","beauty","pharmacy"]},
     {"name": "Super-Pharm - תל אביב",   "lat": 32.0780, "lng": 34.7800, "phone": "+97236093456", "website": "https://www.super-pharm.co.il",  "address": "תל אביב",                      "categories": ["health","beauty","pharmacy"]},
@@ -797,12 +843,24 @@ _CAT_TO_CHAIN_CATEGORIES = {
     "גיימינג": ["electronics","gaming"], "קונסול": ["electronics","gaming"],
     "צעצו": ["toys","games","kids"], "משחק": ["toys","games","kids"],
     "לגו": ["toys","games","kids"], "בובה": ["toys","games","kids"],
+    "לחיצ": ["toys","games","kids"], "סקוויש": ["toys","games","kids"],
+    "פאזל": ["toys","games","kids"], "דמות": ["toys","games","kids"],
     "ספורט": ["sports","outdoor","fitness"], "אופניי": ["sports"],
-    "כדור": ["sports"], "כושר": ["sports","fitness"],
+    "כדור": ["sports"], "כושר": ["sports","fitness"], "יוגה": ["sports","fitness"],
     "ספר": ["books","stationery"],
     "כלי עבוד": ["tools","hardware"], "מקדח": ["tools","hardware"],
-    "גינה": ["tools","hardware","garden"],
+    "כלי": ["tools","hardware","home"], "ברגים": ["tools","hardware"],
+    "גינה": ["tools","hardware","garden","home"], "גינון": ["garden","home","tools"],
+    # ── Home, kitchen & furniture ──
+    "רהיט": ["home","furniture"], "כורסא": ["home","furniture"], "כיסא": ["home","furniture"],
+    "שולחן": ["home","furniture"], "מיטה": ["home","furniture"], "ארון": ["home","furniture"],
+    "מטבח": ["home","kitchen"], "סיר": ["home","kitchen"], "מחבת": ["home","kitchen"],
+    "סכין": ["home","kitchen"], "צלחת": ["home","kitchen"], "כוס": ["home","kitchen"],
+    "מנורה": ["home","furniture"], "תאורה": ["home","furniture"], "שטיח": ["home","furniture"],
+    "וילון": ["home","furniture"], "כרית": ["home","furniture"], "מצעים": ["home","furniture"],
+    "מגבת": ["home"], "אחסון": ["home","furniture"], "בית": ["home"], "נוי": ["home","furniture"],
     "קוסמטיק": ["health","beauty"], "בריאות": ["health","pharmacy"],
+    "טיפוח": ["health","beauty"], "איפור": ["health","beauty"],
 }
 
 
@@ -1073,6 +1131,7 @@ async def search_physical_stores(brand: str, category_he: str, user_lat: float, 
 async def run_matching_pipeline(
     item_id: str, title: str, price_usd: float,
     specs: dict = None, user_lat: float = 32.0853, user_lng: float = 34.7818,
+    image_url: str = "",
 ) -> dict:
     import os
     anthropic_key  = os.getenv("ANTHROPIC_API_KEY", "")
@@ -1101,7 +1160,7 @@ async def run_matching_pipeline(
     # With Anthropic: extract identity → targeted search
     try:
         client   = AsyncAnthropic(api_key=anthropic_key)
-        identity = await extract_product_identity(title, specs or {}, client)
+        identity = await extract_product_identity(title, specs or {}, client, image_url)
     except Exception as e:
         print(f"[pipeline] Identity extraction failed: {e}")
         identity = {"brand": "", "model_code": "", "category_he": "מוצר",

@@ -74,6 +74,7 @@ class MatchRequest(BaseModel):
     specs: dict = Field(default_factory=dict)
     user_lat: Optional[float] = None
     user_lng: Optional[float] = None
+    image_url: str = Field(default="", description="URL de la imagen del producto")
 
 
 class ManualRequestBody(BaseModel):
@@ -235,6 +236,7 @@ async def match(req: MatchRequest):
             specs=req.specs,
             user_lat=req.user_lat or 32.0853,
             user_lng=req.user_lng or 34.7818,
+            image_url=req.image_url,
         )
         return result
     except Exception as e:
