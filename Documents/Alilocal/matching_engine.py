@@ -151,6 +151,7 @@ title: "Stainless Steel Kitchen Knife Set with Block" →
             messages=[{"role": "user", "content": content}],
         )
 
+    err_msg = ""
     try:
         try:
             message = await _call(user_content)
@@ -175,23 +176,65 @@ title: "Stainless Steel Kitchen Knife Set with Block" →
                 result["relevant_stores"] = ["ksp","bug","ivory","zap"]
             return result
     except Exception as e:
+        err_msg = str(e)
         print(f"[identity] Error: {e}")
 
+    # Smart keyword fallback: classify by English keywords so the right Israeli
+    # stores show even when the AI classifier is unavailable.
     brand = _extract_brand_fallback(title)
-    fallback_query = (brand + " " + title.split()[1] if brand and len(title.split()) > 1
-                      else title[:40])
+    cat_type, cat_he, stores = _keyword_category(title)
+    if cat_type == "electronics" and brand and len(title.split()) > 1:
+        fallback_query = brand + " " + title.split()[1]
+    else:
+        fallback_query = cat_he
     return {
         "brand": brand,
         "model": "",
         "model_code": "",
-        "category_he": "מוצר",
-        "category_type": "other",
+        "category_he": cat_he,
+        "category_type": cat_type,
         "is_branded": bool(brand),
-        "confidence": 0.3,
+        "confidence": 0.35,
         "search_query": fallback_query,
-        "search_queries": [fallback_query, title[:40]],
-        "relevant_stores": ["ksp","bug","ivory","zap"],
+        "search_queries": [fallback_query, cat_he, title[:40]],
+        "relevant_stores": stores,
+        "_debug_error": err_msg,
     }
+
+
+def _keyword_category(title: str):
+    """Heuristic (category_type, category_he, relevant_stores) from English keywords,
+    used when the AI classifier fails. Keeps products flowing to the right stores."""
+    t = (title or "").lower()
+    def has(*words): return any(w in t for w in words)
+    if has("squish", "plush", "toy", "doll", "figure", "lego", "puzzle", "stuffed",
+           "stress relief", "fidget", "kids", "children", "anime", "collectible", "dumpling"):
+        return ("toys", "צעצוע", ["toys_r_us", "megatoy", "zap", "ace"])
+    if has("dress", "shirt", "hoodie", "jacket", "pants", "jeans", "skirt", "clothing",
+           "fashion", "sock", "underwear", "blouse", "sweater", "coat", "shoe", "sneaker", "boot"):
+        return ("clothing", "ביגוד", ["termoshop", "zap"])
+    if has("kitchen", "knife", "pan", "pot", "cookware", "plate", "cup", "mug",
+           "cutlery", "utensil", "bowl"):
+        return ("home", "כלי מטבח", ["ace", "home_center", "ikea", "zap"])
+    if has("furniture", "chair", "table", "desk", "sofa", "shelf", "lamp", "curtain",
+           "rug", "carpet", "pillow", "bedding", "mattress", "storage", "decor", "home"):
+        return ("home", "מוצר לבית", ["ace", "home_center", "ikea", "zap"])
+    if has("yoga", "fitness", "gym", "dumbbell", "sport", "bike", "bicycle", "running",
+           "camping", "hiking", "workout"):
+        return ("sports", "ספורט", ["decathlon", "zap", "ace"])
+    if has("makeup", "cosmetic", "skincare", "cream", "lipstick", "shampoo", "perfume",
+           "beauty", "nail"):
+        return ("health", "קוסמטיקה", ["super_pharm", "zap"])
+    if has("drill", "screwdriver", "wrench", "hammer", "tool", "saw", "plier", "hardware",
+           "garden", "paint"):
+        return ("tools", "כלי עבודה", ["ace", "home_center", "ksp", "zap"])
+    if has("car ", "auto", "vehicle", "seat cover", "steering", "tire", "motorcycle"):
+        return ("automotive", "אביזרי רכב", ["zap", "ace", "ksp"])
+    if has("headphone", "earphone", "earbud", "speaker", "mouse", "keyboard", "monitor",
+           "laptop", "phone", "tablet", "camera", "charger", "cable", "usb", "ssd",
+           "gaming", "console", "watch", "led", "bluetooth", "router"):
+        return ("electronics", "מוצר חשמל", ["ksp", "bug", "ivory", "zap"])
+    return ("other", "מוצר", ["zap", "ace", "home_center", "ksp"])
 
 
 def _extract_brand_fallback(title: str) -> str:
