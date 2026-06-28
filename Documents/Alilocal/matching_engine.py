@@ -154,12 +154,12 @@ title: "Stainless Steel Kitchen Knife Set with Block" →
     err_msg = ""
     try:
         try:
-            message = await _call(user_content)
+            message = await asyncio.wait_for(_call(user_content), timeout=8.0)
         except Exception as img_err:
             # Image URL unreachable/invalid → retry text-only so we never lose the match.
             if image_url:
                 print(f"[identity] Image failed ({img_err}); retrying text-only")
-                message = await _call([{"type": "text", "text": prompt}])
+                message = await asyncio.wait_for(_call([{"type": "text", "text": prompt}]), timeout=8.0)
             else:
                 raise
         text = message.content[0].text.strip()
@@ -1245,8 +1245,11 @@ async def run_matching_pipeline(
             "note": f"קטגוריה: {category_he} | נסה לחפש בחנויות מקצועיות לקטגוריה זו",
         }]
     else:
-        async with httpx.AsyncClient(headers=_HEADERS, timeout=12.0, follow_redirects=True) as http:
-            for attempt_query in search_queries:
+        # Cap query attempts and per-request timeout so total time stays under the
+        # extension's 30s budget (each attempt scrapes stores in parallel).
+        attempt_queries = search_queries[:2]
+        async with httpx.AsyncClient(headers=_HEADERS, timeout=8.0, follow_redirects=True) as http:
+            for attempt_query in attempt_queries:
                 encoded_q = quote(attempt_query)
 
                 # Only search relevant stores for this category
@@ -1269,7 +1272,7 @@ async def run_matching_pipeline(
                 priced = [r for r in attempt_online if r.get("price_ils")]
                 print(f"[pipeline] query={attempt_query!r} stores={relevant_stores} -> {len(attempt_online)} results, {len(priced)} priced")
 
-                if priced or attempt_query == search_queries[-1]:
+                if priced or attempt_query == attempt_queries[-1]:
                     used_query = attempt_query
                     online = attempt_online
                     stores_found = {r["store"] for r in attempt_online}
