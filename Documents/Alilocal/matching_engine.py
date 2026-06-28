@@ -145,9 +145,12 @@ title: "Stainless Steel Kitchen Knife Set with Block" →
     user_content.append({"type": "text", "text": prompt})
 
     async def _call(content):
+        # SDK-level timeout (httpx) so a stuck connection can never hang the worker,
+        # on top of the outer asyncio.wait_for guard.
         return await client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=700,
+            timeout=8.0,
             messages=[{"role": "user", "content": content}],
         )
 
@@ -183,10 +186,16 @@ title: "Stainless Steel Kitchen Knife Set with Block" →
     # stores show even when the AI classifier is unavailable.
     brand = _extract_brand_fallback(title)
     cat_type, cat_he, stores = _keyword_category(title)
-    if cat_type == "electronics" and brand and len(title.split()) > 1:
-        fallback_query = brand + " " + title.split()[1]
+    he_terms = _keyword_query(title)          # specific Hebrew terms, e.g. "בובה נסיכה"
+    if cat_type == "electronics" and brand:
+        specific = (brand + " " + he_terms).strip() if he_terms else brand
     else:
-        fallback_query = cat_he
+        specific = he_terms or cat_he
+    # Order: specific Hebrew → brand+terms → generic category → keep options
+    search_queries = []
+    for q in [specific, he_terms, cat_he]:
+        if q and q not in search_queries:
+            search_queries.append(q)
     return {
         "brand": brand,
         "model": "",
@@ -195,11 +204,41 @@ title: "Stainless Steel Kitchen Knife Set with Block" →
         "category_type": cat_type,
         "is_branded": bool(brand),
         "confidence": 0.35,
-        "search_query": fallback_query,
-        "search_queries": [fallback_query, cat_he, title[:40]],
+        "search_query": search_queries[0],
+        "search_queries": search_queries,
         "relevant_stores": stores,
         "_debug_error": err_msg,
     }
+
+
+# English product nouns → Hebrew, to build a useful store-search query when the
+# AI classifier is unavailable. First 3 matches (in title order) are used.
+_EN_HE_TERMS = {
+    "squish": "כדור לחיצה", "plush": "בובת פרווה", "teddy": "דובי", "doll": "בובה",
+    "princess": "נסיכה", "figurine": "דמות", "figure": "דמות", "lego": "לגו",
+    "puzzle": "פאזל", "drone": "רחפן", "headphone": "אוזניות", "earphone": "אוזניות",
+    "earbud": "אוזניות", "speaker": "רמקול", "smartwatch": "שעון חכם", "watch": "שעון",
+    "camera": "מצלמה", "keyboard": "מקלדת", "mouse": "עכבר", "laptop": "מחשב נייד",
+    "tablet": "טאבלט", "phone": "סמארטפון", "charger": "מטען", "cable": "כבל",
+    "dress": "שמלה", "shirt": "חולצה", "hoodie": "קפוצ'ון", "jacket": "מעיל",
+    "sneaker": "נעלי ספורט", "shoe": "נעליים", "knife": "סכין", "pan": "מחבת",
+    "pot": "סיר", "lamp": "מנורה", "chair": "כיסא", "table": "שולחן", "sofa": "ספה",
+    "yoga": "יוגה", "bike": "אופניים", "bicycle": "אופניים", "dumbbell": "משקולת",
+    "makeup": "איפור", "perfume": "בושם", "cream": "קרם", "backpack": "תיק גב",
+    "drill": "מקדחה", "wrench": "מפתח ברגים", "kids": "ילדים", "baby": "תינוק",
+}
+
+
+def _keyword_query(title: str) -> str:
+    """Build a Hebrew search query from recognized English product nouns in the title."""
+    t = (title or "").lower()
+    hits = []
+    for en, he in _EN_HE_TERMS.items():
+        if en in t and he not in hits:
+            hits.append(he)
+        if len(hits) >= 3:
+            break
+    return " ".join(hits)
 
 
 def _keyword_category(title: str):
