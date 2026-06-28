@@ -1125,8 +1125,12 @@ def _category_to_queries(category_he: str, brand: str) -> list[str]:
     return [base]
 
 
+_LAST_PLACES_STATUS = ""
+
 async def search_physical_stores(brand: str, category_he: str, user_lat: float, user_lng: float, google_api_key: str, radius_meters: int = 10000) -> list:
     """Search nearby physical stores using Google Places API (New) Text Search."""
+    global _LAST_PLACES_STATUS
+    _LAST_PLACES_STATUS = "called, awaiting response"
     queries = _category_to_queries(category_he, brand)
     stores = []
     seen_names = set()
@@ -1161,6 +1165,7 @@ async def search_physical_stores(brand: str, category_he: str, user_lat: float, 
                     },
                 )
                 if resp.status_code != 200:
+                    _LAST_PLACES_STATUS = f"HTTP {resp.status_code}: {resp.text[:160]}"
                     print(f"[places] HTTP {resp.status_code} for '{query}'")
                     continue
                 data = resp.json()
@@ -1201,9 +1206,12 @@ async def search_physical_stores(brand: str, category_he: str, user_lat: float, 
                         "lat": lat2, "lng": lng2,
                     })
             except Exception as e:
+                _LAST_PLACES_STATUS = f"exception: {e}"
                 print(f"[places] Error for '{query}': {e}")
 
     stores.sort(key=lambda s: s["distance_km"])
+    if stores:
+        _LAST_PLACES_STATUS = f"ok: {len(stores)} places"
     print(f"[places] Found {len(stores)} stores")
     return stores[:6]
 
@@ -1355,6 +1363,11 @@ async def run_matching_pipeline(
         "online": online[:8], "physical": physical[:6],
         "cost_analysis": cost_analysis,
         "identity": identity,
+        "_places_debug": {
+            "key_present": bool(google_api_key),
+            "status": (_LAST_PLACES_STATUS if google_api_key else "GOOGLE_PLACES_KEY env var not set"),
+            "physical_total": len(physical),
+        },
     }
 
 
