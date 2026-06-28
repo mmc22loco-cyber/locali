@@ -145,6 +145,12 @@ title: "Stainless Steel Kitchen Knife Set with Block" →
     user_content.append({"type": "text", "text": prompt})
 
     async def _call(content):
+        # AI is OFF by default: on Railway the Anthropic call hangs/fails, which
+        # stalls the whole request. The keyword classifier below handles routing
+        # and Hebrew queries reliably. Set env USE_AI=1 to re-enable once the
+        # Anthropic connection is healthy.
+        if os.getenv("USE_AI", "0") != "1":
+            raise RuntimeError("AI classifier disabled (USE_AI!=1)")
         # SDK-level timeout (httpx) so a stuck connection can never hang the worker,
         # on top of the outer asyncio.wait_for guard.
         return await client.messages.create(
@@ -1294,7 +1300,7 @@ async def run_matching_pipeline(
     else:
         # Cap query attempts and per-request timeout so total time stays under the
         # extension's 30s budget (each attempt scrapes stores in parallel).
-        attempt_queries = search_queries[:2]
+        attempt_queries = search_queries[:1]
         async with httpx.AsyncClient(headers=_HEADERS, timeout=8.0, follow_redirects=True) as http:
             for attempt_query in attempt_queries:
                 encoded_q = quote(attempt_query)
