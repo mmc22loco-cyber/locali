@@ -1136,8 +1136,8 @@ async def search_physical_stores(brand: str, category_he: str, user_lat: float, 
     seen_names = set()
 
 
-    async with httpx.AsyncClient(timeout=15.0) as http:
-        for query in queries[:2]:  # Max 2 queries to save quota
+    async with httpx.AsyncClient(timeout=6.0) as http:
+        for query in queries[:1]:  # 1 query — keep total request time low
             try:
                 resp = await http.post(
                     "https://places.googleapis.com/v1/places:searchText",
@@ -1332,16 +1332,25 @@ async def run_matching_pipeline(
 
     encoded_q = quote(used_query)
 
-    # Physical stores: Google Places → OSM fallback → chain fallback
+    # Physical stores: Google Places → OSM fallback → chain fallback.
+    # Each source is hard-bounded so the whole request stays well under the
+    # extension's 30s budget.
     physical: list = []
     if google_api_key:
         try:
-            physical = await search_physical_stores(brand, category_he, user_lat, user_lng, google_api_key)
+            physical = await asyncio.wait_for(
+                search_physical_stores(brand, category_he, user_lat, user_lng, google_api_key),
+                timeout=8.0)
         except Exception as e:
-            print(f"[pipeline] Google Places error: {e}")
+            print(f"[pipeline] Google Places error/timeout: {e}")
 
     if len(physical) < 3:
-        osm = await search_physical_stores_osm(category_he, user_lat, user_lng)
+        try:
+            osm = await asyncio.wait_for(
+                search_physical_stores_osm(category_he, user_lat, user_lng), timeout=7.0)
+        except Exception as e:
+            print(f"[pipeline] OSM error/timeout: {e}")
+            osm = []
         existing = {s["name"].lower() for s in physical}
         for s in osm:
             if s["name"].lower() not in existing:
