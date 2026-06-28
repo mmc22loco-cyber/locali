@@ -1011,7 +1011,7 @@ async def search_physical_stores_osm(category_he: str, user_lat: float, user_lng
         shop_types = "electronics|mobile_phone|computer|hardware|hifi|video_games|tools|doityourself"
         chain_names = "KSP|Bug|Ivory|iDigital|iStore"
     query = (
-        "[out:json][timeout:15];\n(\n"
+        "[out:json][timeout:10];\n(\n"
         "  node[\"shop\"~\"" + shop_types + "\"](around:" + str(radius_meters) + "," + str(user_lat) + "," + str(user_lng) + ");\n"
         "  way[\"shop\"~\"" + shop_types + "\"](around:" + str(radius_meters) + "," + str(user_lat) + "," + str(user_lng) + ");\n"
         "  node[\"shop\"][\"name\"~\"" + chain_names + "\",i](around:" + str(radius_meters) + "," + str(user_lat) + "," + str(user_lng) + ");\n"
@@ -1021,7 +1021,7 @@ async def search_physical_stores_osm(category_he: str, user_lat: float, user_lng
 
     stores = []
     try:
-        async with httpx.AsyncClient(timeout=12.0) as http:
+        async with httpx.AsyncClient(timeout=10.0) as http:
             resp = await http.post(overpass_url, data={"data": query})
             resp.raise_for_status()
             data = resp.json()
@@ -1338,30 +1338,28 @@ async def run_matching_pipeline(
 
     encoded_q = quote(used_query)
 
-    # Physical stores: Google Places → OSM fallback → chain fallback.
-    # Each source is hard-bounded so the whole request stays well under the
-    # extension's 30s budget.
+    # Local businesses: OpenStreetMap (real neighborhood shops) is the PRIMARY source —
+    # free, no Google Cloud config needed. Google Places is opt-in (USE_PLACES=1).
+    # Hardcoded chains are only a last resort. Each source is hard-bounded for speed.
     physical: list = []
-    if google_api_key:
+    try:
+        physical = await asyncio.wait_for(
+            search_physical_stores_osm(category_he, user_lat, user_lng), timeout=11.0)
+    except Exception as e:
+        print(f"[pipeline] OSM error/timeout: {e}")
+
+    if len(physical) < 4 and os.getenv("USE_PLACES", "0") == "1" and google_api_key:
         try:
-            physical = await asyncio.wait_for(
+            places = await asyncio.wait_for(
                 search_physical_stores(brand, category_he, user_lat, user_lng, google_api_key),
-                timeout=8.0)
+                timeout=7.0)
+            existing = {s["name"].lower() for s in physical}
+            for s in places:
+                if s["name"].lower() not in existing:
+                    physical.append(s)
+                    existing.add(s["name"].lower())
         except Exception as e:
             print(f"[pipeline] Google Places error/timeout: {e}")
-
-    if len(physical) < 3:
-        try:
-            osm = await asyncio.wait_for(
-                search_physical_stores_osm(category_he, user_lat, user_lng), timeout=7.0)
-        except Exception as e:
-            print(f"[pipeline] OSM error/timeout: {e}")
-            osm = []
-        existing = {s["name"].lower() for s in physical}
-        for s in osm:
-            if s["name"].lower() not in existing:
-                physical.append(s)
-                existing.add(s["name"].lower())
 
     if len(physical) < 3:
         chain = _nearest_chain_stores(user_lat, user_lng, category_he=category_he)
@@ -1379,9 +1377,9 @@ async def run_matching_pipeline(
         "cost_analysis": cost_analysis,
         "identity": identity,
         "_places_debug": {
-            "key_present": bool(google_api_key),
-            "status": (_LAST_PLACES_STATUS if google_api_key else "GOOGLE_PLACES_KEY env var not set"),
+            "source": "osm-primary",
             "physical_total": len(physical),
+            "places_opt_in": os.getenv("USE_PLACES", "0") == "1",
         },
     }
 
